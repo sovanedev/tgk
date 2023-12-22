@@ -1,9 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import os
-#import jwt
+import jwt
 import secrets
-import random
 
 app = Flask(__name__)
 
@@ -24,12 +23,13 @@ class Users(db.Model):
     sex = db.Column(db.String(50), nullable = True)
     access = db.Column(db.Integer, nullable=False)
     token = db.Column(db.String(200), nullable=False)
+    clas = db.Column(db.Integer, nullable=False)
 
 def generate_token(user_id):
     payload = {
         'user_id': user_id,
     }
-    token = random.randint(1000000, 132312312312)
+    token = jwt.encode(payload, secrets.token_hex(16), algorithm='HS256')
     return token
 
 @app.route('/register', methods=['POST'])
@@ -83,7 +83,8 @@ def get_items():
         "age": user.age,
         "sex": user.sex,
         "password": user.password,
-        "token": user.token
+        "token": user.token,
+        'clas': user.clas
     })
 
 @app.route("/edit", methods=["POST"])
@@ -117,7 +118,14 @@ def listen():
         return jsonify({"listening": request.get_json()})
     else:
         return jsonify({"message": "Вы не авторизованы."})
-
+    
+@app.route("/admin_list", methods=["POST"])
+def admin_list():
+    data = request.get_json()
+    if data["token"]:
+        users = Users.query.all()
+        serialized_users = [{"id": user.id, "login": user.login, "access": user.access, "age": user.age, "sex": user.sex, "clas": user.clas} for user in users]
+        return jsonify(serialized_users)
 
 if __name__ == '__main__':
     with app.app_context():
